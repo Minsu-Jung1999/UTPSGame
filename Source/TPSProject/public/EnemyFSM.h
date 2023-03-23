@@ -79,5 +79,21 @@ public:
 
 	// 피격 알림 이벤트 함수
 	void OnDamageProcess();
+
+	// 체력
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = FSM)
+		int32 hp = 3;
+	// 피격 대기 시간
+	UPROPERTY(EditDefaultsOnly, Category = FSM)
+		float damageDelatyTime = 2.0f;
+
+	// 아래로 사라지는 속도
+	UPROPERTY(EditDefaultsOnly, Category = FSM)
+		float dieSpeed = 50.0f;
+
+	// 사용 중인 애니메이션 블루프린트
+	UPROPERTY()
+		class UEnemyAnim* anim;
+	
 		
 };

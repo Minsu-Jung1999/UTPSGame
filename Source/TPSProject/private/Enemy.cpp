@@ -10,8 +10,10 @@ AEnemy::AEnemy()
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+
+
 	// 1. 스켈레탈메시 데이터 로드
-	ConstructorHelpers::FObjectFinder<USkeletalMesh> TempMesh(TEXT("SkeletalMesh'/Game/Mannequin/Character/Mesh/SK_Mannequin.SK_Mannequin'"));
+	ConstructorHelpers::FObjectFinder<USkeletalMesh> TempMesh(TEXT("SkeletalMesh'/Game/Enemy/Model/vampire_a_lusth.vampire_a_lusth'"));
 	if (TempMesh.Succeeded())	
 	{
 		// 1-2 데이터 할당
@@ -19,10 +21,19 @@ AEnemy::AEnemy()
 		// 1-3 메시 위치 및 회전 설정
 		GetMesh()->SetRelativeLocationAndRotation(FVector(0, 0, -88), FRotator(0, -90, 0));
 
+		// 1-4 메시 크기 수정
+		GetMesh()->SetRelativeScale3D(FVector(0.84f));
 	}
 
 	// EnemyFSM 컴포넌트 추가
 	fsm = CreateDefaultSubobject<UEnemyFSM>(TEXT("FSM"));
+
+	// 애니메이션 블루프린트 할당하기 "_C"를 붙혀줘야 블루프린트 클래스로 인자로 넘긴다.
+	ConstructorHelpers::FClassFinder<UAnimInstance> tempClass(TEXT("AnimBlueprint'/Game/Blueprints/ABP_Enemy.ABP_Enemy_C'"));
+	if (tempClass.Succeeded())
+	{
+		GetMesh()->SetAnimInstanceClass(tempClass.Class);
+	}
 }
 
 // Called when the game starts or when spawned

@@ -6,7 +6,8 @@
 #include "Enemy.h"	
 #include <Kismet/GameplayStatics.h>
 #include "TPSProject.h"
-
+#include <Components/CapsuleComponent.h>
+#include "EnemyAnim.h"
 
 // Sets default values for this component's properties
 UEnemyFSM::UEnemyFSM()
@@ -30,6 +31,10 @@ void UEnemyFSM::BeginPlay()
 	target = Cast<ATPSPlayer>(actor);
 	// 소유 객체 가져오기
 	me = Cast<AEnemy>(GetOwner());
+
+	// UEnemyAnim* 할당
+	anim = Cast<UEnemyAnim>(me->GetMesh()->GetAnimInstance());
+
 }
 
 
@@ -68,6 +73,9 @@ void UEnemyFSM::IdleState()
 		mState = EEnemyState::Move;
 		// 경과 시간 초기화
 		currentTime = 0;
+
+		// 애니메이션 상태 동기화
+		anim->animState = mState;
 	}
 }
 
@@ -88,6 +96,12 @@ void UEnemyFSM::MoveState()
 	{
 		// 2. 공격 상태로 전환하고 싶다.
 		mState = EEnemyState::Attack;
+		// 애니메이션 동기화
+		anim->animState = mState;
+		// 공격 애니메이션 재생 활성화
+		anim->bAttackPlay = true;
+		// 공격 상태 전환 시 대기 시간이 바로 끝나도록 처리
+		currentTime = attackDelayTime;
 	}
 }
 		
@@ -104,6 +118,7 @@ void UEnemyFSM::AttackState()
 		PRINT_LOG(TEXT("ATTACK!!!"));
 		// 경과 시간 초기화
 		currentTime = 0;
+		anim->bAttackPlay = true;
 	}
 
 	// 목표: 타깃이 공격 범위를 벗어나면 상태를 이동으로 전환하고 싶다. ( 거리만 알면 되므로 FVector 가 아닌 float 을 사용한다.)
@@ -114,20 +129,72 @@ void UEnemyFSM::AttackState()
 	{
 		// 3. 상태를 이동으로 전환하고 싶다.
 		mState = EEnemyState::Move;
+		// 애니메이션 상태 동기화
+		anim->animState = mState;
 	}
 }
 
 void UEnemyFSM::DamageState()
 {
+	// 1. 시간에 흐름
+	currentTime += GetWorld()->DeltaTimeSeconds;
+	// 2. 만약 경과 시간이 대기 시간을 초과했다면
+	if (currentTime > damageDelatyTime)
+	{
+		// 3. 대기 상태로 전환하고 싶다.
+		mState = EEnemyState::Idle;
+		// 경과 시간 초기화
+		currentTime = 0;
+		// 애니메이션 상태 동기화
+		anim->animState = mState;
 
+	}
 }
 
 void UEnemyFSM::DieState()
 {
+	// 계속 아래로 내려가고 싶다.
+	// 등속운동 공식 P = P0 + vt
+	FVector P0 = me->GetActorLocation();
+	FVector vt = FVector::DownVector * dieSpeed * GetWorld()->DeltaTimeSeconds;
+	FVector P = P0 + vt;
+	me->SetActorLocation(P);
+
+	// 1. 만약 2미터 이상내려왔다면
+	if (P.Z < -200.f)
+	{
+		// 2. 제거시킨다.
+		me->Destroy();
+	}
 }
 
 void UEnemyFSM::OnDamageProcess()
 {
-	me->Destroy();
+	// 체력 감소
+	hp--;
+	// 만약 체력이 남아있다면
+	if (hp > 0)
+	{
+		// 상태를 피격으로 전환
+		mState = EEnemyState::Damage;
+
+		currentTime = 0;
+
+		// 피격 애니메이션 재생
+		int32 index = FMath::RandRange(0, 1);
+		FString sectionName = FString::Printf(TEXT("Damage%d"), 0);
+		anim->PlayDamageAnim(FName(*sectionName));
+	}
+	// 그렇지 않다면
+	else
+	{
+		// 상태를 죽음으로 전환
+		mState = EEnemyState::Die;
+		// 캡슐 충돌체 비활성화
+		me->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	// 애니메이션 상태 동기화
+	anim->animState = mState;
+
 }
 
